@@ -7,6 +7,7 @@ import com.hannesdorfmann.annotatedadapter.processor.ViewInfo;
 import com.hannesdorfmann.annotatedadapter.processor.ViewTypeInfo;
 import com.hannesdorfmann.annotatedadapter.processor.ViewTypeSearcher;
 import com.hannesdorfmann.annotatedadapter.processor.util.ProcessorMessage;
+import com.hannesdorfmann.annotatedadapter.processor.util.AndroidResourceMapper;
 import com.hannesdorfmann.annotatedadapter.processor.util.TypeHelper;
 import dagger.ObjectGraph;
 import java.io.IOException;
@@ -28,6 +29,7 @@ import repacked.com.squareup.javawriter.JavaWriter;
  */
 public class AbsListViewGenerator implements CodeGenerator {
 
+  private final AndroidResourceMapper androidResourceMapper;
   private AdapterInfo info;
   @Inject Filer filer;
   @Inject TypeHelper typeHelper;
@@ -36,9 +38,10 @@ public class AbsListViewGenerator implements CodeGenerator {
   private Map<String, AdapterInfo> adaptersMap;
 
   public AbsListViewGenerator(ObjectGraph graph, AdapterInfo info,
-      Map<String, AdapterInfo> adaptersMap) {
+                              Map<String, AdapterInfo> adaptersMap, AndroidResourceMapper androidResourceMapper) {
     this.info = info;
     this.adaptersMap = adaptersMap;
+    this.androidResourceMapper = androidResourceMapper;
     graph.inject(this);
   }
 
@@ -110,8 +113,8 @@ public class AbsListViewGenerator implements CodeGenerator {
 
     for (ViewTypeInfo vt : info.getViewTypes()) {
       jw.beginControlFlow((ifs > 0 ? "else " : "") + "if (viewType == ad.%s)", vt.getFieldName());
-      jw.emitStatement("View view = ad.getInflater().inflate(%d, parent, false)",
-          vt.getLayoutRes());
+      jw.emitStatement("View view = ad.getInflater().inflate(%s, parent, false)",
+          androidResourceMapper.getId(vt.getElement(), vt.getLayoutRes()).code);
       jw.emitStatement("%s.%s vh = new %s.%s(view)", info.getViewHoldersClassName(),
           vt.getViewHolderClassName(), info.getViewHoldersClassName(), vt.getViewHolderClassName());
       jw.emitStatement("view.setTag(vh)");
@@ -302,8 +305,8 @@ public class AbsListViewGenerator implements CodeGenerator {
       jw.beginConstructor(EnumSet.of(Modifier.PUBLIC), "android.view.View", "view");
       jw.emitEmptyLine();
       for (ViewInfo f : v.getViews()) {
-        jw.emitStatement("%s = (%s) view.findViewById(%d)", f.getViewFieldName(),
-            f.getQualifiedClassName(), f.getId());
+        jw.emitStatement("%s = (%s) view.findViewById(%s)", f.getViewFieldName(),
+            f.getQualifiedClassName(), androidResourceMapper.getId(v.getElement(), f.getId()).code);
       }
       jw.endConstructor();
       jw.endType();

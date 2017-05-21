@@ -6,6 +6,7 @@ import com.hannesdorfmann.annotatedadapter.annotation.ViewType;
 import com.hannesdorfmann.annotatedadapter.processor.generator.AbsListViewGenerator;
 import com.hannesdorfmann.annotatedadapter.processor.generator.CodeGenerator;
 import com.hannesdorfmann.annotatedadapter.processor.generator.RecyclerViewGenerator;
+import com.hannesdorfmann.annotatedadapter.processor.util.AndroidResourceMapper;
 import com.hannesdorfmann.annotatedadapter.processor.util.AnnotatedAdapterModule;
 import com.hannesdorfmann.annotatedadapter.processor.util.ProcessorMessage;
 import com.hannesdorfmann.annotatedadapter.support.recyclerview.SupportRecyclerDelegators;
@@ -51,6 +52,7 @@ public class AnnotatedAdapterProcessor extends AbstractProcessor {
   @Inject ProcessorMessage logger;
 
   ObjectGraph objectGraph;
+  private AndroidResourceMapper androidResourceMapper;
 
   @Override
   public synchronized void init(ProcessingEnvironment env) {
@@ -58,6 +60,8 @@ public class AnnotatedAdapterProcessor extends AbstractProcessor {
 
     objectGraph = ObjectGraph.create(new AnnotatedAdapterModule(env));
     objectGraph.inject(this);
+
+    androidResourceMapper = new AndroidResourceMapper(env);
   }
 
   @Override public SourceVersion getSupportedSourceVersion() {
@@ -66,6 +70,8 @@ public class AnnotatedAdapterProcessor extends AbstractProcessor {
 
   @Override public boolean process(Set<? extends TypeElement> annotations,
       RoundEnvironment roundEnv) {
+
+    androidResourceMapper.scanForRClasses(roundEnv);
 
     // Search for annotated views
     ViewTypeSearcher viewTypeSearcher = new ViewTypeSearcher(objectGraph);
@@ -84,11 +90,11 @@ public class AnnotatedAdapterProcessor extends AbstractProcessor {
       for (AdapterInfo adapterInfo : adapters.values()) {
 
         if (adapterInfo.getAdapterType() == AdapterInfo.AdapterType.SUPPORT_RECYCLER_VIEW) {
-          CodeGenerator codeGen = new RecyclerViewGenerator(objectGraph, adapterInfo, adapters);
+          CodeGenerator codeGen = new RecyclerViewGenerator(objectGraph, adapterInfo, adapters, androidResourceMapper);
           codeGen.generateCode();
           recyclerApapters.add(adapterInfo);
         } else {
-          CodeGenerator codeGen = new AbsListViewGenerator(objectGraph, adapterInfo, adapters);
+          CodeGenerator codeGen = new AbsListViewGenerator(objectGraph, adapterInfo, adapters, androidResourceMapper);
           codeGen.generateCode();
           listViewAdapters.add(adapterInfo);
         }

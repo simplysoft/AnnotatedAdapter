@@ -6,6 +6,7 @@ import com.hannesdorfmann.annotatedadapter.processor.ViewInfo;
 import com.hannesdorfmann.annotatedadapter.processor.ViewTypeInfo;
 import com.hannesdorfmann.annotatedadapter.processor.ViewTypeSearcher;
 import com.hannesdorfmann.annotatedadapter.processor.util.ProcessorMessage;
+import com.hannesdorfmann.annotatedadapter.processor.util.AndroidResourceMapper;
 import com.hannesdorfmann.annotatedadapter.processor.util.TypeHelper;
 import com.hannesdorfmann.annotatedadapter.support.recyclerview.SupportRecyclerAdapterDelegator;
 import dagger.ObjectGraph;
@@ -29,6 +30,7 @@ import repacked.com.squareup.javawriter.JavaWriter;
 public class RecyclerViewGenerator implements CodeGenerator {
 
   private static String VIEW_HOLDER = "android.support.v7.widget.RecyclerView.ViewHolder";
+  private final AndroidResourceMapper androidResourceMapper;
 
   private AdapterInfo info;
   @Inject
@@ -41,9 +43,10 @@ public class RecyclerViewGenerator implements CodeGenerator {
   private Map<String, AdapterInfo> adaptersMap;
 
   public RecyclerViewGenerator(ObjectGraph graph, AdapterInfo info,
-                               Map<String, AdapterInfo> adaptersMap) {
+                               Map<String, AdapterInfo> adaptersMap, AndroidResourceMapper androidResourceMapper) {
     this.info = info;
     this.adaptersMap = adaptersMap;
+    this.androidResourceMapper = androidResourceMapper;
     graph.inject(this);
   }
 
@@ -115,8 +118,8 @@ public class RecyclerViewGenerator implements CodeGenerator {
 
     for (ViewTypeInfo vt : info.getViewTypes()) {
       jw.beginControlFlow((ifs > 0 ? "else " : "") + "if (viewType == ad.%s)", vt.getFieldName());
-      jw.emitStatement("android.view.View view = ad.getInflater().inflate(%d, parent, false)",
-          vt.getLayoutRes());
+      jw.emitStatement("android.view.View view = ad.getInflater().inflate(%s, parent, false)",
+          androidResourceMapper.getId(vt.getElement(), vt.getLayoutRes()).code);
       jw.emitStatement("%s.%s vh = new %s.%s(view)", info.getViewHoldersClassName(),
           vt.getViewHolderClassName(), info.getViewHoldersClassName(), vt.getViewHolderClassName());
       if (vt.hasViewHolderInitMethod()) {
@@ -303,8 +306,8 @@ public class RecyclerViewGenerator implements CodeGenerator {
       jw.emitStatement("super(view)");
       jw.emitEmptyLine();
       for (ViewInfo f : v.getViews()) {
-        jw.emitStatement("%s = (%s) view.findViewById(%d)", f.getViewFieldName(),
-            f.getQualifiedClassName(), f.getId());
+        jw.emitStatement("%s = (%s) view.findViewById(%s)", f.getViewFieldName(),
+            f.getQualifiedClassName(), androidResourceMapper.getId(v.getElement(), f.getId()).code);
       }
       jw.endConstructor();
       jw.endType();
